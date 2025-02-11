@@ -1,0 +1,9 @@
+[submodule "gem5-SALAM"]
+	path = gem5-SALAM
+	url = https://github.com/lczzz29/gem5-SALAM.git
+[submodule "soda-opt"]
+	path = soda-opt
+	url = https://github.com/lczzz29/soda-opt.git
+[submodule "llvm-project"]
+	path = llvm-project
+	url = https://github.com/llvm/llvm-project.git
