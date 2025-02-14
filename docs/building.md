@@ -16,13 +16,13 @@ git clone https://github.com/lczzz29/Unnamed-Simulator.git
 
 Checkout the develop branch. Currently only this branch contains main content of project.
 
-```shell
+```bash
 git checkout develop
 ```
 
 Initialize and update the submodules llvm-project, soda-opt and gem5-SALAM.
 
-```shell
+```bash
 git submodule init
 git submodule update
 ```
@@ -33,7 +33,7 @@ git submodule update
 
 The environment may resolve the dependencies and meet the requirement by following the instructions in the [LLVM Getting Started](https://llvm.org/docs/GettingStarted.html#requirements) page. In Ubuntu 22.04, you may follow these commands to install the dependencies.
 
-```shell
+```bash
 sudo apt-get install build-essential cmake ninja-build python3-pip
 
 # Using pip as package manager
@@ -43,7 +43,7 @@ pip install pybind11 numpy
 
 Build LLVM and MLIR from SODA-OPT project. You may refer to the [How to build?](https://github.com/lczzz29/soda-opt?tab=readme-ov-file#how-to-build) section in its README file. The steps using Helper Script are listed below.
 
-```shell
+```bash
 cd soda-opt/build_tools/
 
 # To configure, build, and install
@@ -55,7 +55,7 @@ cd soda-opt/build_tools/
 
 After building LLVM, MLIR and SODA-OPT, you may need to add the path to their binaries to the environment variable `PATH`.
 
-```shell
+```bash
 export PATH=$PATH:<path/to/llvm/install/bin>:<path/to/soda-opt/install/bin>
 ```
 
@@ -63,7 +63,7 @@ export PATH=$PATH:<path/to/llvm/install/bin>:<path/to/soda-opt/install/bin>
 
 Download the wheel package of torch and torch-mlir from the [release page](https://github.com/llvm/torch-mlir/releases/download/). So far we tested following specific versions:
 
-```shell
+```bash
 # torch
 wget https://github.com/llvm/torch-mlir/releases/download/oneshot-20230101.76/torch-2.0.0.dev20230101+cpu-cp310-cp310-linux_x86_64.whl
 
@@ -73,7 +73,7 @@ wget https://github.com/llvm/torch-mlir/releases/download/oneshot-20230101.76/to
 
 Install the wheel packages using pip.
 
-```shell
+```bash
 pip install torch-2.0.0.dev20230101+cpu-cp310-cp310-linux_x86_64.whl
 pip install torch_mlir-20230101.76-cp310-cp310-linux_x86_64.whl
 ```
@@ -84,7 +84,7 @@ Build the gem5-SALAM project. You may refer to the [Building gem5](https://www.g
 
 For Ubuntu 22.04, you may install the dependencies using the following commands.
 
-```shell
+```bash
 sudo apt install build-essential git m4 scons zlib1g zlib1g-dev \
     libprotobuf-dev protobuf-compiler libprotoc-dev libgoogle-perftools-dev \
     python3-dev libboost-all-dev pkg-config python3-tk
@@ -92,7 +92,7 @@ sudo apt install build-essential git m4 scons zlib1g zlib1g-dev \
 
 Then build the gem5-SALAM project.
 
-```shell
+```bash
 cd gem5-SALAM
 scons build/ARM/gem5.opt -j`nproc`
 ```
@@ -103,7 +103,7 @@ You may not need this package if you are not going to use the transformer model.
 
 Install the transformers package using pip.
 
-```shell
+```bash
 pip install transformers
 ```
 
@@ -111,7 +111,7 @@ pip install transformers
 
 pydot and graphviz are used to visualize the system config file in gem5. Install the pydot and graphviz packages using pip.
 
-```shell
+```bash
 pip install pydot graphviz
 ```
 
