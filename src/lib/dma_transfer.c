@@ -44,3 +44,62 @@ void poll_stream_dma_transfer(volatile uint8_t *str_dma_flags) {
     // Poll Stream DMA for finish
     while ((*str_dma_flags & 0x08) == 0x08); // STR_DMA_WR_RUNNING
 }
+
+void dma_transfer_tensor_to_spm(volatile uint8_t *dma_flags, uint64_t write_addr, 
+                                uint64_t data_offset, uint32_t *shape, uint32_t *stride, 
+                                uint32_t copy_len, uint64_t aligned_ptr) {
+    // Determine the number of dimensions
+    uint32_t num_dims = 0;
+    while (shape[num_dims] != 0 && stride[num_dims] != 0) {
+        num_dims++;
+    }
+
+    // Compute the total number of transfers needed
+    uint32_t total_transfers = 1;
+    for (uint32_t i = 0; i < num_dims - 1; ++i) {
+        total_transfers *= shape[i];
+    }
+
+    uint64_t linear_offset = data_offset;
+    uint64_t wr_addr = write_addr;
+
+    // Perform multiple 1-dimensional transfers
+    for (uint32_t i = 0; i < total_transfers; ++i) {
+
+        // Call the existing dma_transfer function
+        dma_transfer(dma_flags, aligned_ptr + linear_offset, 
+            wr_addr, shape[num_dims]);
+    
+        linear_offset += shape[num_dims - 1];
+        wr_addr += shape[num_dims - 1];
+    }
+}
+
+void dma_transfer_tensor_to_mem(volatile uint8_t *dma_flags, uint64_t read_addr, 
+                                uint64_t data_offset, uint32_t *shape, uint32_t *stride, 
+                                uint32_t copy_len, uint64_t aligned_ptr) {
+    // Determine the number of dimensions
+    uint32_t num_dims = 0;
+    while (shape[num_dims] != 0 && stride[num_dims] != 0) {
+        num_dims++;
+    }
+
+    // Compute the total number of transfers needed
+    uint32_t total_transfers = 1;
+    for (uint32_t i = 0; i < num_dims - 1; ++i) {
+        total_transfers *= shape[i];
+    }
+
+    uint64_t linear_offset = data_offset;
+    uint64_t rd_addr = read_addr;
+
+    // Perform multiple 1-dimensional transfers
+    for (uint32_t i = 0; i < total_transfers; ++i) {
+
+        // Call the existing dma_transfer function
+        dma_transfer(dma_flags, rd_addr, aligned_ptr + linear_offset, shape[num_dims]);
+    
+        linear_offset += shape[num_dims - 1];
+        rd_addr += shape[num_dims - 1];
+    }
+}

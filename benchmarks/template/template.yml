@@ -25,6 +25,7 @@ acc_cluster:
   # Accelerator Example
   - Accelerator:
     - Name: # Acc name here (Required)
+      Type: # Selects the type of DMA, can be Functional or Mover (Required)
       IrPath: # Path for the IR file relative to M5_PATH (Required)
       # E.g. benchmarks/mobilenetv2/hw/ir/tail/Reshape.ll
       ConfigPath: # Path for the Config file relative to M5_PATH (Required)
@@ -34,6 +35,8 @@ acc_cluster:
       PIOMaster: # PIO Master list (Required)
       # Can be LocalBus or any combination of Accs
       # e.g. FirstAcc,SecondAcc 
+      Source: # Needed by Mover type, the source Variable name
+      Destination: # Needed by Mover type, the dst Variable name
     # Supported Ops in MLIR
     - Operation:
       # Must use full name <dialect>.<op> (Required)
