@@ -33,3 +33,6 @@
 
 # Vscode configuration
 .vscode/
+
+# Graduate Paper
+docs/graduate_paper.md
