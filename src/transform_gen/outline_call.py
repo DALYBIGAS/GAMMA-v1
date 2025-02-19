@@ -4,37 +4,37 @@ import sys
 
 def main():
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Call the MLIR transform program.")
+    parser = argparse.ArgumentParser(description="Call the outline transform program.")
     parser.add_argument("input_file", help="Path to the input MLIR file.")
-    parser.add_argument("--match-op", default="linalg.matmul", help="Operation name to match (e.g., linalg.matmul).")
-    parser.add_argument("--tile-sizes", nargs="+", type=int, default=[4, 4, 4], help="Tile sizes for tiling (e.g., 4 4 4).")
-    parser.add_argument("--transform-program", default="./transform_program", help="Path to the compiled transform program.")
+    parser.add_argument("--op-name", required=True, help="Name of the operation to replace (e.g., linalg.matmul).")
+    parser.add_argument("--function-name", required=True, help="Name of the function to generate (e.g., my_matmul).")
+    parser.add_argument("--transform-program", default="./outline_transform", help="Path to the compiled outline_transform binary.")
     args = parser.parse_args()
 
-    # Prepare the command to call the transform program
+    # Prepare the command to call the outline_transform program
     command = [
         args.transform_program,
         args.input_file,
-        f"--match-op={args.match_op}",
-        f"--tile-sizes={','.join(map(str, args.tile_sizes))}",
+        f"--op-name={args.op_name}",
+        f"--function-name={args.function_name}"
     ]
-
+    
     # Print the command for debugging
     print("Running command:", " ".join(command))
-
-    # Call the transform program
+    
+    # Call the outline_transform program
     try:
         result = subprocess.run(command, check=True, text=True, capture_output=True)
-        print("Transform program output:")
+        print("Outline transform output:")
         print(result.stdout)
     except subprocess.CalledProcessError as e:
-        print("Error running transform program:", e.stderr, file=sys.stderr)
+        print("Error running outline transform:", e.stderr, file=sys.stderr)
         sys.exit(1)
-
+    
     # Run the mlir-opt command to apply the transform
     mlir_opt_command = ["mlir-opt", "--transform-interpreter", args.input_file]
     print("Running command:", " ".join(mlir_opt_command))
-
+    
     try:
         result = subprocess.run(mlir_opt_command, check=True, text=True, capture_output=True)
         print("mlir-opt output:")
