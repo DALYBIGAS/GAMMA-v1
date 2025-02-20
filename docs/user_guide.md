@@ -99,7 +99,11 @@ This includes some utility functions for generating test data and defines some a
 
 The main code to run your benchmark. You may first generate or write you test data. When encountering with the code to de accelerated, just configure the TOP accelerator's memory mapped registers (the registers are corresponding with the arguments of top function in hw/top.c and the PIOSize set in config.yml) and set it to DEV_INIT state to run.
 
-Use m5ops `m5_reset_stats();`, `m5_dump_stats();` and `m5_exit();` for stats record.
+Use m5ops `m5_reset_stats();`, `m5_dump_stats();` and `m5_exit();` for starting, dumping and finishing stats record process.
+
+#### Run Benchmark and Collect Stats
+
+Follow the official Readme file in repository [gem5-SALAM](https://github.com/TeCSAR-UNCC/gem5-SALAM) to compile and run the benchmark.
 
 ## MLIR Code Generation
 

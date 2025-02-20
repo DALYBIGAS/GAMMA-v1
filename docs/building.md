@@ -17,6 +17,7 @@ git clone https://github.com/lczzz29/Unnamed-Simulator.git
 Checkout the develop branch. Currently only this branch contains main content of project.
 
 ```bash
+cd Unnamed-Simulator
 git checkout develop
 ```
 

@@ -22,7 +22,17 @@ class AccCluster:
         # Do this to point the hardware configuration to the
         # sys config YAML file when HWPath isn't defined
         self.hw_config_path = hw_config_path
+        self.fusable_ops = FusableOps()
         self.process_config(working_dir=working_dir)
+
+    def _get_dimensions(self, dType):
+        """Helper function to extract the number of dimensions from a dType string."""
+        if not dType.startswith("<") or not dType.endswith(">"):
+            raise ValueError(f"Invalid dType format: {dType}")
+        # Remove the angle brackets and split by 'x'
+        shape_str = dType[1:-1].split("x")
+        # The last element is the data type (e.g., "f32"), so ignore it
+        return len(shape_str) - 1
 
     def process_config(self, working_dir):
         dma_class = []
@@ -155,6 +165,8 @@ class AccCluster:
             ir_path = None
             hw_config_path = self.hw_config_path
             debug = False
+            type = None
+            operation = None
 
             # Find the name first...
             # Also, find a non-stupid way to find the name first
@@ -163,6 +175,11 @@ class AccCluster:
                     name = device_dict['Name']
             # Parse the rest of the parameters
             for device_dict in acc['Accelerator']:
+                if 'Type' in device_dict:
+                    type = device_dict['Type']
+                    if type == "Mover":
+                        self.fusable_ops.add(device_dict['Source'],\
+                                             device_dict['Destination'])
                 if 'PIOSize' in device_dict:
                     pio_address = top_address
                     pio_size = device_dict['PIOSize'] + \
@@ -187,6 +204,23 @@ class AccCluster:
                     int_num = device_dict['InterruptNum']
                 if 'Debug' in device_dict:
                     debug = device_dict['Debug']
+                if 'Operation' in device_dict:
+                    for op in device_dict['Operation']:
+                        # Setup the operation's parameters to pass
+                        operands = []
+                        results = []
+                        for operand in op['Operands']:
+                            if operand['InOut'] == 'In':
+                                operands.append(
+                                    Operand(operand['Name'], 'In', \
+                                            operand['Dtype'], operand['VarName']))
+                            else:
+                                results.append(
+                                    Operand(operand['Name'], 'Out', \
+                                            operand['Dtype'], operand['VarName']))
+                        # Create a new operation
+                        # Currently only consider one operation per accelerator
+                        operation = Operation(op['Name'], operands, results, op['Tile'])
                 if 'Var' in device_dict:
                     for var in device_dict['Var']:
                         # Setup the variable's parameters to pass
@@ -242,7 +276,9 @@ class AccCluster:
                     config_path=self.config_path,
                     hw_config_path=hw_config_path,
                     variables=variables,
-                    debug=debug
+                    debug=debug,
+                    type=type,
+                    operation=operation
                 )
             )
 
@@ -271,7 +307,65 @@ class AccCluster:
 
         return lines
 
+    def genDriver(self, output_file):
+        with open(output_file, 'w') as f:
+            # Write header includes and macros
+            f.write("#include <stdint.h>\n")
+            f.write(f'#include "../{self.name}_hw_defines.h"\n\n')
 
+            # Generate a call function for each accelerator
+            for acc in self.accs:
+                acc_name = acc.name  # Get accelerator name
+                # Generate function arguments
+                args = []
+                for operand in acc.operation.operands:
+                    opName = operand.name
+                    num_dims = self._get_dimensions(operand.dType)
+                    args.extend([
+                        f"float* {opName}_allocated", f"float* {opName}_aligned",
+                        f"int64_t {opName}_offset"
+                    ])
+                    for dim in range(num_dims):
+                        args.append(f"int64_t {opName}_size{dim}")
+                    for dim in range(num_dims):
+                        args.append(f"int64_t {opName}_stride{dim}")
+
+                for result in acc.operation.results:
+                    opName = result.varName
+                    num_dims = self._get_dimensions(result.dType)
+                    args.extend([
+                        f"float* {opName}_allocated", f"float* {opName}_aligned",
+                        f"int64_t {opName}_offset"
+                    ])
+                    for dim in range(num_dims):
+                        args.append(f"int64_t {opName}_size{dim}")
+                    for dim in range(num_dims):
+                        args.append(f"int64_t {opName}_stride{dim}")
+
+                # Write function signature
+                f.write(f"void {acc_name}Call({', '.join(args)}) {{\n")
+                # Transfer operands (inputs) to SPM
+                for operand in acc.operation.operands:
+                    opName = operand.name
+                    varName = operand.varName
+                    f.write(f"    // Transfer operand {opName} to SPM\n")
+                    f.write(f"    dma_transfer_tensor_to_spm(DMA_Flags, {varName}, 0, {var_name}_shape, {var_name}_stride, {var_name}_len, (uint64_t){var_name}_ptr);\n\n")
+
+                # Call the accelerator
+                f.write("    // Call the accelerator\n")
+                f.write(f"    accelerator_call({acc_name.upper()});\n\n")
+
+                # Transfer results (outputs) to memory
+                for result in acc.operation.results:
+                    opName = result.name
+                    varName = result.varName
+                    f.write(f"    // Transfer result {opName} to memory\n")
+                    f.write(f"    dma_transfer_tensor_to_mem(DMA_FLAGS, MEM_ADDR, 0, {var_name}_shape, {var_name}_stride, {var_name}_len, (uint64_t){var_name}_ptr);\n\n")
+
+                f.write("}\n\n")
+
+            # End of file
+            f.write("// End of generated driver code\n")
 class Accelerator:
 
     def __init__(
@@ -289,7 +383,9 @@ class Accelerator:
         config_path: str,
         hw_config_path: str,
         variables=None,
-        debug: bool = False
+        debug: bool = False,
+        type: str = None,
+        operation = None
     ):
 
         self.name = name.lower()
@@ -307,6 +403,8 @@ class Accelerator:
         self.hw_config_path = hw_config_path
         self.variables = variables
         self.debug = debug
+        self.type = type
+        self.operation = operationc
 
     def genDefinition(self):
         lines = []
@@ -622,10 +720,11 @@ class Variable:
         return lines
 
 class Operand:
-    def __init__(self, name: str, inout: str, dtype: str):
+    def __init__(self, name: str, inout: str, dtype: str, varname: str = None):
         self.name = name
-        self.inout = inout
-        self.dtype = dtype
+        self.inOut = inout
+        self.dType = dtype
+        self.varName = varname
 
 class Operation:
     def __init__(self, name: str, operands: list, results: list, tile: str):

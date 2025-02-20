@@ -47,12 +47,8 @@ void poll_stream_dma_transfer(volatile uint8_t *str_dma_flags) {
 
 void dma_transfer_tensor_to_spm(volatile uint8_t *dma_flags, uint64_t write_addr, 
                                 uint64_t data_offset, uint32_t *shape, uint32_t *stride, 
-                                uint32_t copy_len, uint64_t aligned_ptr) {
-    // Determine the number of dimensions
-    uint32_t num_dims = 0;
-    while (shape[num_dims] != 0 && stride[num_dims] != 0) {
-        num_dims++;
-    }
+                                uint32_t copy_len, uint64_t aligned_ptr, uint32_t num_dims) {
+    // num_dims is provided as an argument
 
     // Compute the total number of transfers needed
     uint32_t total_transfers = 1;
@@ -75,14 +71,11 @@ void dma_transfer_tensor_to_spm(volatile uint8_t *dma_flags, uint64_t write_addr
     }
 }
 
+// TODO: Change tensor related arguments to LLVM Tensor Type Struct
 void dma_transfer_tensor_to_mem(volatile uint8_t *dma_flags, uint64_t read_addr, 
                                 uint64_t data_offset, uint32_t *shape, uint32_t *stride, 
-                                uint32_t copy_len, uint64_t aligned_ptr) {
-    // Determine the number of dimensions
-    uint32_t num_dims = 0;
-    while (shape[num_dims] != 0 && stride[num_dims] != 0) {
-        num_dims++;
-    }
+                                uint32_t copy_len, uint64_t aligned_ptr, uint32_t num_dims) {
+    // num_dims is provided as an argument
 
     // Compute the total number of transfers needed
     uint32_t total_transfers = 1;

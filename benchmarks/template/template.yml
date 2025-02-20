@@ -25,7 +25,7 @@ acc_cluster:
   # Accelerator Example
   - Accelerator:
     - Name: # Acc name here (Required)
-      Type: # Selects the type of DMA, can be Functional or Mover (Required)
+      Type: # Selects the type of Acc, can be Functional or Mover (Required)
       IrPath: # Path for the IR file relative to M5_PATH (Required)
       # E.g. benchmarks/mobilenetv2/hw/ir/tail/Reshape.ll
       ConfigPath: # Path for the Config file relative to M5_PATH (Required)
@@ -45,6 +45,7 @@ acc_cluster:
         - Name: # E.g. arg0, arg1
           InOut: # As input operand or as output operand. Can be In or Out
           Dtype: # Data type. E.g. <2x5x3xf32>
+          VarName: # Variable name for data loading
       # You may refer to MLIR linalg dialect doc and source code to get the
       # number of sizes needed to tile a linalg op
       # E.g. 4,4,4 for linalg.matmul op tiling i,j and k three loops
