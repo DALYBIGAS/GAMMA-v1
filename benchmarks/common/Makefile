@@ -31,8 +31,8 @@
 # Authors: 	Matthias Jung
 #			Frederik Lauer
 
-CROSS_COMPILE_DIR = /usr/bin
-LLVM_TOOLCHAIN = /home/lczhao/Downloads/LLVMEmbeddedToolchainForArm-16.0.0-Linux-x86_64
+CROSS_COMPILE_DIR = /path/to/cross/compile/dir
+LLVM_TOOLCHAIN = /path/to/llvm_arm_toolchain
 
 ARCH          ?= arm
 CROSS_COMPILE ?= arm-none-eabi-

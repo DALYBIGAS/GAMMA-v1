@@ -67,6 +67,7 @@ int main(int argc, char **argv) {
       builder.getType<transform::AnyOpType>());
 
   // Add the entry block to the named sequence
+  // FIXME: namedSequenceOp has no addEntryBlock() function
   Block *entryBlock = namedSequence.addEntryBlock();
   builder.setInsertionPointToStart(entryBlock);
 
