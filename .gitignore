@@ -36,3 +36,6 @@
 
 # Graduate Paper
 docs/graduate_paper.md
+
+# CMake build directory
+build/

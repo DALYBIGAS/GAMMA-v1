@@ -39,20 +39,19 @@ acc_cluster:
       StreamOut: # Stream DMA name to connect to (Optional)
       Source: # Needed by Mover type, the source Variable name
       Destination: # Needed by Mover type, the dst Variable name
-      Copies: # The number of copies of this Acc (Optional)
     # Supported Ops in MLIR. This is not needed by Mover type
     - Operation:
       # Must use full name <dialect>.<op> (Required)
       - Name: # E.g. linalg.batch_matmul
-      # You may refer to MLIR linalg dialect doc and source code to get the
-      # number of sizes needed to tile a linalg op
-      # E.g. 4,4,4 for linalg.matmul op tiling i,j and k three loops
-      - Tile: # Sizes used for tiling each for-loop of this operation.
       - Operand: # Should be as many as the op spec defines
         - Name: # E.g. arg0, arg1
           InOut: # As input operand or as output operand. Can be In or Out
           Dtype: # Data type. E.g. <2x5x3xf32>
           VarName: # Variable name for data loading
+      # You may refer to MLIR linalg dialect doc and source code to get the
+      # number of sizes needed to tile a linalg op
+      # E.g. 4,4,4 for linalg.matmul op tiling i,j and k three loops
+      - Tile: # Sizes used for tiling each for-loop of this operation.
     # Standard SPM Example, automatically connects to parent acc
     - Var:
       - Name: # Var name here (Required)
@@ -62,7 +61,6 @@ acc_cluster:
         ResetOnRead: # True/False | Reset ready bit on private scratchpad memory read
         ReadOnInvalid: # True/False | Enable reads on invalid memory segments when ready mode is used
         WriteOnValid: # True/False | Enable writes on valid memory sectors when ready mode is used
-        DoubleBuffer: # True/False | Enable double buffering for this SPM
     # SPM with Multiple Accs Example
     - Var:
       - Name: # Var name here (Required)

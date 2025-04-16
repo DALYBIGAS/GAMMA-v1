@@ -153,12 +153,17 @@ class AccCluster:
                     top_address = top_address + aligned_inc + alignedStatusInc
         # Parse Accelerators
         for acc in self.accs:
+            # Save top_address before processing accelerator config for copies
+            start_addr = self.top_address
+            copies = 1
+            pio_size_val = None
+
             name = None
             pio_masters = []
             stream_in = []
             stream_out = []
             local_connections = []
-            variables = []
+            # variables will now be set per accelerator copy later
             pio_address = None
             pio_size = None
             int_num = None
@@ -168,29 +173,22 @@ class AccCluster:
             type = None
             operation = None
 
-            # Find the name first...
-            # Also, find a non-stupid way to find the name first
             for device_dict in acc['Accelerator']:
                 if 'Name' in device_dict:
                     name = device_dict['Name']
-            # Parse the rest of the parameters
-            for device_dict in acc['Accelerator']:
                 if 'Type' in device_dict:
                     type = device_dict['Type']
                     if type == "Mover":
-                        self.fusable_ops.add(device_dict['Source'],\
-                                             device_dict['Destination'])
+                        self.fusable_ops.add(device_dict['Source'], device_dict['Destination'])
                 if 'PIOSize' in device_dict:
-                    pio_address = top_address
-                    pio_size = device_dict['PIOSize'] + \
-                        (64 - (device_dict['PIOSize'] % 64))
-                    top_address = top_address + pio_size
-                    if ((top_address + pio_size) % 64) != 0:
-                        print("Acc Error: " + hex(pio_address))
-                if 'IrPath' in device_dict:
-                    ir_path = device_dict['IrPath']
-                if 'HWPath' in device_dict:
-                    hw_config_path = device_dict['HWPath']
+                    # Compute PIO size and save for copies
+                    pio_size = device_dict['PIOSize'] + (64 - (device_dict['PIOSize'] % 64))
+                    pio_size_val = pio_size
+                    # For non-copied accelerator, assign and update address
+                    self.top_address = self.top_address + pio_size
+                    if ((self.top_address + pio_size) % 64) != 0:
+                        print("Acc Error: " + hex(self.top_address - pio_size))
+                # ...existing code for other parameters...
                 if 'PIOMaster' in device_dict:
                     pio_masters.extend((device_dict['PIOMaster'].split(',')))
                 if 'StreamIn' in device_dict:
@@ -198,90 +196,127 @@ class AccCluster:
                 if 'StreamOut' in device_dict:
                     stream_out.extend((device_dict['StreamOut'].split(',')))
                 if 'LocalSlaves' in device_dict:
-                    local_connections.extend(
-                        (device_dict['LocalSlaves'].split(',')))
+                    local_connections.extend((device_dict['LocalSlaves'].split(',')))
                 if 'InterruptNum' in device_dict:
                     int_num = device_dict['InterruptNum']
+                if 'IrPath' in device_dict:
+                    ir_path = device_dict['IrPath']
+                if 'HWPath' in device_dict:
+                    hw_config_path = device_dict['HWPath']
                 if 'Debug' in device_dict:
                     debug = device_dict['Debug']
                 if 'Operation' in device_dict:
                     for op in device_dict['Operation']:
-                        # Setup the operation's parameters to pass
                         operands = []
                         results = []
                         for operand in op['Operands']:
                             if operand['InOut'] == 'In':
-                                operands.append(
-                                    Operand(operand['Name'], 'In', \
-                                            operand['Dtype'], operand['VarName']))
+                                operands.append(Operand(operand['Name'], 'In', operand['Dtype'], operand['VarName']))
                             else:
-                                results.append(
-                                    Operand(operand['Name'], 'Out', \
-                                            operand['Dtype'], operand['VarName']))
-                        # Create a new operation
-                        # Currently only consider one operation per accelerator
+                                results.append(Operand(operand['Name'], 'Out', operand['Dtype'], operand['VarName']))
                         operation = Operation(op['Name'], operands, results, op['Tile'])
-                if 'Var' in device_dict:
-                    for var in device_dict['Var']:
-                        # Setup the variable's parameters to pass
-                        varParams = dict(var)
-                        varParams['Address'] = top_address
-                        varParams['AccName'] = name
+                if 'Copies' in device_dict:
+                    copies = device_dict['Copies']
 
-                        if varParams['Type'] == "Stream":
-                            aligned_inc = int(
-                                var['StreamSize']+4) + (64 - (int(var['StreamSize']+4) % 64))
-                            statusAddress = top_address + aligned_inc
-                            varParams['StatusAddress'] = statusAddress
+            # Revert top_address if accelerator is to be copied so Var allocation is per copy
+            if copies > 1:
+                self.top_address = start_addr
 
-                        # Create and append a new variable
-                        variables.append(Variable(**varParams))
-                        # Increment the current address based on size
-                        if "SPM" in var['Type']:
-                            aligned_inc = int(
-                                var['Size']) + (64 - (int(var['Size']) % 64))
-                            top_address = top_address + aligned_inc
-                        elif "Stream" in var['Type']:
-                            statusSize = 4
-                            aligned_inc = int(
-                                var['StreamSize']+4) + (64 - (int(var['StreamSize']+4) % 64))
-                            status_inc = int(statusSize) + \
-                                (64 - (int(statusSize) % 64))
-                            top_address = top_address + aligned_inc + status_inc
-                        elif "RegisterBank" in var['Type']:
-                            aligned_inc = int(
-                                var['Size']) + (64 - (int(var['Size']) % 64))
-                            top_address = top_address + aligned_inc
-                        elif "Cache" in var['Type']:
-                            # Don't need to change anything for cache
-                            top_address = top_address
-                        else:
-                            # Should never get here... but just in case throw an exception
-                            exceptionString = ("The Variable: " + name
-                                               + " has an invalid type named: " + self.type)
-                            raise Exception(exceptionString)
-            # Append accelerator to the cluster
-            acc_class.append(
-                Accelerator(
-                    name=name,
-                    pio_masters=pio_masters,
-                    local_connections=local_connections,
-                    address=pio_address,
-                    size=pio_size,
-                    stream_in=stream_in,
-                    stream_out=stream_out,
-                    int_num=int_num,
-                    working_dir=working_dir,
-                    ir_path=ir_path,
-                    config_path=self.config_path,
-                    hw_config_path=hw_config_path,
-                    variables=variables,
-                    debug=debug,
-                    type=type,
-                    operation=operation
+            # Instantiate accelerator copies or a single instance with Var parsing
+            if copies > 1:
+                for i in range(copies):
+                    copy_vars = []
+                    # Process Var block for this accelerator copy if exists
+                    if 'Var' in acc:
+                        for var_group in acc['Var']:
+                            for var in var_group:
+                                varParams = dict(var)
+                                varParams['Address'] = self.top_address
+                                varParams['AccName'] = name
+                                if varParams['Type'] == "Stream":
+                                    aligned_inc = int(var['StreamSize'] + 4) + (64 - (int(var['StreamSize'] + 4) % 64))
+                                    varParams['StatusAddress'] = self.top_address + aligned_inc
+                                copy_vars.append(Variable(**varParams))
+                                if varParams['Type'] == "SPM":
+                                    aligned_inc = int(var['Size']) + (64 - (int(var['Size']) % 64))
+                                    self.top_address += aligned_inc
+                                elif varParams['Type'] == "Stream":
+                                    statusSize = 4
+                                    aligned_inc = int(var['StreamSize'] + 4) + (64 - (int(var['StreamSize'] + 4) % 64))
+                                    status_inc = int(statusSize) + (64 - (int(statusSize) % 64))
+                                    self.top_address += aligned_inc + status_inc
+                                elif varParams['Type'] == "RegisterBank":
+                                    aligned_inc = int(var['Size']) + (64 - (int(var['Size']) % 64))
+                                    self.top_address += aligned_inc
+
+                    copy_pio_address = None
+                    if pio_size_val is not None:
+                        copy_pio_address = self.top_address
+                        self.top_address += pio_size_val
+                    copy_name = f"{name}_{i}"
+                    acc_class.append(
+                        Accelerator(
+                            name=copy_name,
+                            pio_masters=pio_masters,
+                            local_connections=local_connections,
+                            address=copy_pio_address,
+                            size=pio_size,
+                            stream_in=stream_in,
+                            stream_out=stream_out,
+                            int_num=int_num,
+                            working_dir=working_dir,
+                            ir_path=ir_path,
+                            config_path=self.config_path,
+                            hw_config_path=hw_config_path,
+                            variables=copy_vars,
+                            debug=debug,
+                            type=type,
+                            operation=operation
+                        )
+                    )
+            else:
+                single_vars = []
+                if 'Var' in acc:
+                    for var_group in acc['Var']:
+                        for var in var_group:
+                            varParams = dict(var)
+                            varParams['Address'] = self.top_address
+                            varParams['AccName'] = name
+                            if varParams['Type'] == "Stream":
+                                aligned_inc = int(var['StreamSize'] + 4) + (64 - (int(var['StreamSize'] + 4) % 64))
+                                varParams['StatusAddress'] = self.top_address + aligned_inc
+                            single_vars.append(Variable(**varParams))
+                            if varParams['Type'] == "SPM":
+                                aligned_inc = int(var['Size']) + (64 - (int(var['Size']) % 64))
+                                self.top_address += aligned_inc
+                            elif varParams['Type'] == "Stream":
+                                statusSize = 4
+                                aligned_inc = int(var['StreamSize'] + 4) + (64 - (int(var['StreamSize'] + 4) % 64))
+                                status_inc = int(statusSize) + (64 - (int(statusSize) % 64))
+                                self.top_address += aligned_inc + status_inc
+                            elif varParams['Type'] == "RegisterBank":
+                                aligned_inc = int(var['Size']) + (64 - (int(var['Size']) % 64))
+                                self.top_address += aligned_inc
+                acc_class.append(
+                    Accelerator(
+                        name=name,
+                        pio_masters=pio_masters,
+                        local_connections=local_connections,
+                        address=pio_address,
+                        size=pio_size,
+                        stream_in=stream_in,
+                        stream_out=stream_out,
+                        int_num=int_num,
+                        working_dir=working_dir,
+                        ir_path=ir_path,
+                        config_path=self.config_path,
+                        hw_config_path=hw_config_path,
+                        variables=single_vars,
+                        debug=debug,
+                        type=type,
+                        operation=operation
+                    )
                 )
-            )
-
         self.accs = acc_class
         self.dmas = dma_class
         self.top_address = top_address
@@ -349,7 +384,7 @@ class AccCluster:
                     opName = operand.name
                     varName = operand.varName
                     f.write(f"    // Transfer operand {opName} to SPM\n")
-                    f.write(f"    dma_transfer_tensor_to_spm(DMA_Flags, {varName}, 0, {var_name}_shape, {var_name}_stride, {var_name}_len, (uint64_t){var_name}_ptr);\n\n")
+                    f.write(f"    dma_transfer_tensor_to_spm(DMA_Flags, {varName}, 0, {varName}_shape, {varName}_stride, {varName}_len, (uint64_t){varName}_ptr);\n\n")
 
                 # Call the accelerator
                 f.write("    // Call the accelerator\n")
@@ -360,7 +395,7 @@ class AccCluster:
                     opName = result.name
                     varName = result.varName
                     f.write(f"    // Transfer result {opName} to memory\n")
-                    f.write(f"    dma_transfer_tensor_to_mem(DMA_FLAGS, MEM_ADDR, 0, {var_name}_shape, {var_name}_stride, {var_name}_len, (uint64_t){var_name}_ptr);\n\n")
+                    f.write(f"    dma_transfer_tensor_to_mem(DMA_FLAGS, MEM_ADDR, 0, {varName}_shape, {varName}_stride, {varName}_len, (uint64_t){varName}_ptr);\n\n")
 
                 f.write("}\n\n")
 
@@ -404,7 +439,7 @@ class Accelerator:
         self.variables = variables
         self.debug = debug
         self.type = type
-        self.operation = operationc
+        self.operation = operation
 
     def genDefinition(self):
         lines = []
