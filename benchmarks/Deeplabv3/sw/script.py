@@ -96,7 +96,7 @@ try:
     subprocess.run(soda_opt_command, check=True, stdout=open(output_filename, 'w'))
     print(f"------------> SODA优化完成，输出文件：\n{output_filename}")
 except subprocess.CalledProcessError as e:
-    print(f"------------> 执行SODA优化命令时出错: {e}")
+    print(f"------------> 执行SODA优化命令时出错ERROR: {e}")
 
 #----------------------- Convert & Host Code Generation -----------------------#
 
