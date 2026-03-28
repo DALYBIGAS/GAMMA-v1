@@ -1,4 +1,4 @@
-# Simulator-v1
+# GAMMA-v1
 
 A simulation framework based on **gem5 + MLIR + custom accelerator modeling**, designed for exploring hardware-software co-design, accelerator mapping, and system-level simulation.
 
