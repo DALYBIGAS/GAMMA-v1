@@ -41,8 +41,18 @@ Simulator/
 ## ⚙️ Dependencies
 
 According to the official workflow, the following components are required:
-
+### 0. Building from Source
+Use git to clone this repo.
+```bash
+git clone https://github.com/DALYBIGAS/GAMMA-v1.git
+```
+Checkout the develop branch. Currently only this branch contains main content of project
+```bash
+cd GAMMA-v1
+git checkout develop
+```
 ### 1. LLVM + MLIR
+The environment may resolve the dependencies and meet the requirement by following the instructions in the [LLVM Getting Started page](https://llvm.org/docs/GettingStarted.html#requirements). In Ubuntu 22.04, you may follow these commands to install the dependencies.
 
 ```bash
 git clone https://github.com/llvm/llvm-project.git
