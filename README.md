@@ -62,24 +62,44 @@ Apply patch and build:
 ```bash
 git apply arm_func.patch
 cd build_tools
-./build_llvm.sh <llvm_src> <llvm_build> <llvm_install>
-./build_soda.sh <source_dir> <install_dir> <build_dir> <llvm_build> <llvm_install>
+./build_llvm.sh <path/to/llvm/src> <llvm_build_dir> <llvm_install_dir>
+./build_tools/build_soda.sh <source_dir> <install_dir> <build_dir>
+<path/to/llvm/build/dir> <path/to/llvm/install/dir>
 ```
 
 ### 3. Torch-MLIR + PyTorch
 
 ```bash
-pip install torch
-pip install torch-mlir
+# Create a virtual environment in the specified directory (optional)
+python -m venv /path/to/torch-mlir/virtual/environment
+# Used to enter the virtual environment
+source /path/to/torch-mlir/virtual/environment/bin/activate
+
+# Download the specified version of torch and torch-mlir
+get https://github.com/llvm/torch-mlir/releases/download/snapshot20230101.76/torch-2.0.0.dev20230101+cpu-cp310-cp310-linux_x86_64.whl
+wget https://github.com/llvm/torch-mlir/releases/download/snapshot20230101.76/torch_mlir-20230101.76-cp310-cp310-linux_x86_64.whl
+
+# pip install
+pip install torch-2.0.0.dev20230101+cpu-cp310-cp310-linux_x86_64.whl
+pip install torch_mlir-20230101.76-cp310-cp310-linux_x86_64.whl
 pip install transformers
+pip install pydot
 ```
 
 ### 4. gem5-SALAM
 
 ```bash
 git clone https://github.com/TeCSAR-UNCC/gem5-SALAM.git
+sudo apt install build-essential git m4 scons zlib1g zlib1g-dev \
+ libprotobuf-dev protobuf-compiler libprotoc-dev libgoogle-perftools-dev \
+ python3-dev python-is-python3 libboost-all-dev pkg-config
+
+#The framework can be built in either optimization (opt) or debugging (debug) mode, contingent upon the requirement for debugging capabilities, such as utilizing GDB to debug the gem5 simulator or its executing workloads.
 cd gem5-SALAM
-scons build/ARM/gem5.opt -j$(nproc)
+#opt mode
+scons build/ARM/gem5.opt -j`nproc`
+#debug mode
+scons build/ARM/gem5.debug -j`nproc`
 ```
 
 ## 🚀 Workflow
