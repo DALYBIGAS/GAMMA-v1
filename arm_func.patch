@@ -1,0 +1,38 @@
+diff --git a/build_tools/build_llvm.sh b/build_tools/build_llvm.sh
+index 8babf63..3147451 100755
+--- a/build_tools/build_llvm.sh
++++ b/build_tools/build_llvm.sh
+@@ -49,14 +49,14 @@ cmake -GNinja \
+ -DCMAKE_INSTALL_PREFIX=$install_dir \
+ -DLLVM_INSTALL_UTILS=ON \
+ -DLLVM_ENABLE_LLD=ON \
+- -DLLVM_ENABLE_PROJECTS="mlir" \
+- -DLLVM_TARGETS_TO_BUILD="host" \
++ -DLLVM_ENABLE_PROJECTS="mlir;clang" \
++ -DLLVM_TARGETS_TO_BUILD="host;ARM" \
+ -DLLVM_INCLUDE_TOOLS=ON \
+ -DLLVM_BUILD_TOOLS=ON \
+ -DLLVM_INCLUDE_TESTS=ON \
+ -DMLIR_INCLUDE_TESTS=ON \
+ -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
+- -DCMAKE_BUILD_TYPE=RelWithDebInfo \
++ -DCMAKE_BUILD_TYPE=Release \
+ -DLLVM_ENABLE_ASSERTIONS=On \
+ -DLLVM_BUILD_EXAMPLES=OFF 
+diff --git a/lib/Dialect/SODA/Transforms/KernelOutlining.cpp
+b/lib/Dialect/SODA/Transforms/KernelOutlining.cpp
+index 867d4bd..5e5006f 100644
+--- a/lib/Dialect/SODA/Transforms/KernelOutlining.cpp
++++ b/lib/Dialect/SODA/Transforms/KernelOutlining.cpp
+@@ -218,8 +218,10 @@ public:
+ auto funcWalkResult = func.walk([&](soda::LaunchOp op) {
+ llvm::SetVector<Value> operands;
+ std::string kernelFnName =
+- Twine(op->getParentOfType<func::FuncOp>().getName(), "_kernel")
+- .str();
++ Twine(std::get<1>(op->getRegion(0).front().front()
++ .getName().getStringRef().split('.')), "_kernel").str();
++ // Twine(op->getParentOfType<func::FuncOp>().getName(), "_kernel")
++ // .str();
+ // func.emitWarning()<< kernelFnName;
+ // auto newName =
